@@ -148,18 +148,27 @@ module.exports = {
 
                 if (!recover_token)
                     return res.status(404).json({ errors: [{ msg: "Token de recuperação inválido!"}] });
+                // Verifica se a nova senha é igual à senha anterior
+                const user = await User.findByPk(user_id);
+                const compare = bcrypt.compareSync(password, user.password);
 
+                if (compare) {
+                return res.status(406).json({ errors: [{ msg: "A nova senha não pode ser igual à senha anterior!" }] });
+                }
+
+                // Atualiza a senha se for diferente
                 await User.update({ password: bcrypt.hashSync(password, 8) }, {
                     where: { id: user_id }
                 });
+
+                // Destruir o token apenas se a senha for alterada com sucesso
+                RecoverToken.destroy({where: {token}});
 
                 return res.status(200).send("Senha redefinida com sucesso!")
 
             } catch (error) {
                 return handleExceptions(error, res);
-            } finally {
-                RecoverToken.destroy({where: {token}})
-            }
+            } 
         }
     },
 
